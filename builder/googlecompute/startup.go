@@ -13,12 +13,8 @@ echo "Packer startup script starting."
 
 RETVAL=0
 BASEMETADATAURL=http://metadata/computeMetadata/v1/instance/
-GCEPROFILE=/etc/profile.d/google-cloud-sdk.sh
-
-if [ -f $GCEPROFILE ]; then
-    shopt -s expand_aliases
-    source $GCEPROFILE
-fi
+DOCKER=/usr/bin/docker
+($DOCKER images google/cloud-sdk || $DOCKER pull google/cloud-sdk) > /dev/null
 
 GetMetadata () {
   echo "$(curl -f -H "Metadata-Flavor: Google" ${BASEMETADATAURL}/${1} 2> /dev/null)"
@@ -28,7 +24,8 @@ ZONE=$(GetMetadata zone | grep -oP "[^/]*$")
 NAME=$(GetMetadata name)
 
 SetMetadata () {
-  gcloud compute instances add-metadata ${NAME} --metadata ${1}=${2} --zone ${ZONE}
+  $DOCKER run -t -i --net="host" -v /var/run/docker.sock:/var/run/doker.sock google/cloud \
+    compute instances add-metadata ${NAME} --metadata ${1}=${2} --zone ${ZONE}
 }
 
 STARTUPSCRIPT=$(GetMetadata attributes/packer-wrapped-startup-script)
