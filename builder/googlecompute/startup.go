@@ -1,9 +1,5 @@
 package googlecompute
 
-import (
-	"fmt"
-)
-
 const StartupScriptKey string = "startup-script"
 const StartupScriptStatusKey string = "startup-script-status"
 const StartupWrappedScriptKey string = "packer-wrapped-startup-script"
@@ -12,23 +8,31 @@ const StartupScriptStatusDone string = "done"
 const StartupScriptStatusError string = "error"
 const StartupScriptStatusNotDone string = "notdone"
 
-var StartupScriptLinux string = fmt.Sprintf(`#!/usr/bin/env bash
+var StartupScriptLinux string = `#!/usr/bin/env bash
 echo "Packer startup script starting."
+
 RETVAL=0
 BASEMETADATAURL=http://metadata/computeMetadata/v1/instance/
+GCEPROFILE=/etc/profile.d/google-cloud-sdk.sh
+
+if [ -f $GCEPROFILE ]; then
+    shopt -s expand_aliases
+    source $GCEPROFILE
+fi
 
 GetMetadata () {
   echo "$(curl -f -H "Metadata-Flavor: Google" ${BASEMETADATAURL}/${1} 2> /dev/null)"
 }
 
 ZONE=$(GetMetadata zone | grep -oP "[^/]*$")
+NAME=$(GetMetadata name)
 
 SetMetadata () {
-  gcloud compute instances add-metadata ${HOSTNAME} --metadata ${1}=${2} --zone ${ZONE}
+  gcloud compute instances add-metadata ${NAME} --metadata ${1}=${2} --zone ${ZONE}
 }
 
-STARTUPSCRIPT=$(GetMetadata attributes/%s)
-STARTUPSCRIPTPATH=/packer-wrapped-startup-script
+STARTUPSCRIPT=$(GetMetadata attributes/packer-wrapped-startup-script)
+STARTUPSCRIPTPATH=$(mktemp -d)/packer-wrapped-startup-script
 if [ -f "/var/log/startupscript.log" ]; then
   STARTUPSCRIPTLOGPATH=/var/log/startupscript.log
 else
@@ -52,8 +56,7 @@ if [[ ! -z $STARTUPSCRIPT ]]; then
 fi
 
 echo "Packer startup script done."
-SetMetadata %s %s
-exit $RETVAL
-`, StartupWrappedScriptKey, StartupScriptStatusKey, StartupScriptStatusDone)
+SetMetadata startup-script-status done
+exit $RETVAL`
 
 var StartupScriptWindows string = ""
