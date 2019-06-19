@@ -10,6 +10,12 @@ import (
 	"github.com/pkg/errors"
 )
 
+type tencentCloudDataDisk struct {
+	DiskType string `mapstructure:"disk_type"`
+	DiskSize int64  `mapstructure:"disk_size"`
+	SnapshotId string `mapstructure:"disk_snapshot_id"`
+}
+
 type TencentCloudRunConfig struct {
 	AssociatePublicIpAddress bool   `mapstructure:"associate_public_ip_address"`
 	SourceImageId            string `mapstructure:"source_image_id"`
@@ -17,6 +23,7 @@ type TencentCloudRunConfig struct {
 	InstanceName             string `mapstructure:"instance_name"`
 	DiskType                 string `mapstructure:"disk_type"`
 	DiskSize                 int64  `mapstructure:"disk_size"`
+	DataDisks []tencentCloudDataDisk `mapstructure:"data_disks"`
 	VpcId                    string `mapstructure:"vpc_id"`
 	VpcName                  string `mapstructure:"vpc_name"`
 	VpcIp                    string `mapstructure:"vpc_ip"`

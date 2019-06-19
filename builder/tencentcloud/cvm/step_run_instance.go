@@ -57,12 +57,43 @@ func (s *stepRunInstance) Run(ctx context.Context, state multistep.StateBag) mul
 			Zone: &s.ZoneId,
 		}
 	}
-	req.ImageId = source_image.ImageId
 	req.InstanceChargeType = &POSTPAID_BY_HOUR
 	req.InstanceType = &s.InstanceType
-	req.SystemDisk = &cvm.SystemDisk{
-		DiskType: &s.DiskType,
-		DiskSize: &s.DiskSize,
+	req.ImageId = source_image.ImageId
+	if source_image.SnapshotSet != nil && len(source_image.SnapshotSet) > 0 {
+		ui.Say("Source image has snapshot disks, overwrite disk settings", )
+		var dataDisks []*cvm.DataDisk
+		for _, snapshot := range source_image.SnapshotSet {
+			if *snapshot.DiskUsage == "SYSTEM_DISK" {
+				req.SystemDisk = &cvm.SystemDisk{
+					DiskType: &s.DiskType,
+					DiskSize: snapshot.DiskSize,
+				}
+			} else {
+				var dataDisk cvm.DataDisk
+				dataDisk.DiskType = &s.DiskType
+				dataDisk.DiskSize = snapshot.DiskSize
+				dataDisk.SnapshotId = snapshot.SnapshotId
+				dataDisks = append(dataDisks, &dataDisk)
+			}
+		}
+		req.DataDisks = dataDisks
+	} else {
+		req.SystemDisk = &cvm.SystemDisk{
+			DiskType: &s.DiskType,
+			DiskSize: &s.DiskSize,
+		}
+		var dataDisks []*cvm.DataDisk
+		for _, disk := range config.TencentCloudRunConfig.DataDisks {
+			var dataDisk cvm.DataDisk
+			dataDisk.DiskType = &disk.DiskType
+			dataDisk.DiskSize = &disk.DiskSize
+			if disk.SnapshotId != "" {
+				dataDisk.SnapshotId = &disk.SnapshotId
+			}
+			dataDisks = append(dataDisks, &dataDisk)
+		}
+		req.DataDisks = dataDisks
 	}
 	req.VirtualPrivateCloud = &cvm.VirtualPrivateCloud{
 		VpcId:    &vpc_id,
